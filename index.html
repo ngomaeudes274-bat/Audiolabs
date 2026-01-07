@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioLabs - Ma Bibliothèque</title>
+    <style>
+        /* DESIGN GLOBAL */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: radial-gradient(circle, #1e1e1e, #121212); 
+            color: white; 
+            text-align: center; 
+            padding: 20px; 
+            min-height: 100vh;
+            background-size: cover;
+            background-attachment: fixed;
+            transition: 0.5s;
+        }
+
+        .container { 
+            max-width: 800px; 
+            margin: auto; 
+            background: rgba(0, 0, 0, 0.75); 
+            padding: 30px; 
+            border-radius: 20px; 
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* NAVIGATION */
+        nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        nav button { 
+            background: rgba(255,255,255,0.1); 
+            color: white; 
+            border: 1px solid #1DB954; 
+            padding: 10px 20px; 
+            border-radius: 20px; 
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        nav button:hover { background: #1DB954; }
+
+        /* SECTIONS */
+        .onglet { display: none; animation: fadeIn 0.5s ease; }
+        .active { display: block; }
+
+        /* CARTES AUDIO */
+        #listeAudios {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .audio-card { 
+            background: #282828; 
+            padding: 15px; 
+            border-radius: 15px; 
+            text-align: left; 
+            border-bottom: 4px solid #1DB954;
+            transition: 0.3s;
+        }
+        .audio-card:hover { transform: translateY(-5px); background: #333; }
+
+        /* BOUTONS ET INPUTS */
+        button { 
+            background: #1DB954; color: white; border: none; 
+            padding: 12px 25px; border-radius: 30px; 
+            cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        button:hover { transform: scale(1.05); background: #1ed760; }
+
+        input[type="text"], .upload-section {
+            width: 100%; box-sizing: border-box; background: #252525;
+            border: 1px solid #444; color: white; padding: 12px;
+            border-radius: 10px; margin: 10px 0;
+        }
+
+        .upload-section { border: 2px dashed #1DB954; padding: 30px; }
+
+        audio { width: 100%; margin-top: 10px; filter: hue-rotate(90deg); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <button onclick="changerOnglet('accueil')">🏠 Accueil</button>
+        <button onclick="changerOnglet('bibliotheque')">📚 Bibliothèque</button>
+        <button onclick="changerOnglet('playlists')">🎶 Playlists</button>
+    </nav>
+
+    <div class="container">
+        <section id="accueil" class="onglet active">
+            <h1>🚀 AudioLabs</h1>
+            <div class="upload-section">
+                <h3>Publier un morceau</h3>
+                <input type="file" id="fileInput" accept="audio/*">
+                <button onclick="ajouterAudio()">Mettre en ligne</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label for="bgInput" style="cursor: pointer; color: #1DB954; text-decoration: underline;">
+                    🖼️ Personnaliser le fond d'écran
+                </label>
+                <input type="file" id="bgInput" accept="image/*" style="display: none;" onchange="changerFond()">
+            </div>
+            <p id="compteur" style="margin-top: 20px; color: #1DB954;"></p>
+        </section>
+
+        <section id="bibliotheque" class="onglet">
+            <h1>Ma Bibliothèque</h1>
+            <input type="text" id="barreRecherche" onkeyup="filtrerAudios()" placeholder="Rechercher un titre...">
+            <div id="listeAudios"></div>
+        </section>
+
+        <section id="playlists" class="onglet">
+            <h1>Mes Playlists</h1>
+            <div style="padding: 40px; border: 2px dashed #444; border-radius: 15px; color: #888;">
+                Feature "Playlists" bientôt disponible sur AudioLabs !
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // NAVIGATION
+        function changerOnglet(id) {
+            document.querySelectorAll('.onglet').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // CHARGEMENT INITIAL
+        window.onload = function() {
+            let sauvegardes = JSON.parse(localStorage.getItem('mesAudios')) || [];
+            sauvegardes.forEach(nom => creerVisuelAudio(nom));
+            
+            const fond = localStorage.getItem('monFondEcran');
+            if (fond) document.body.style.backgroundImage = `url(${fond})`;
+            
+            mettreAJourCompteur();
+        };
+
+        // AJOUTER UN AUDIO
+        function ajouterAudio() {
+            const input = document.getElementById('fileInput');
+            if (input.files.length > 0) {
+                const nom = input.files[0].name;
+                let sauvegardes = JSON.parse(localStorage.getItem('mesAudios')) || [];
+                sauvegardes.push(nom);
+                localStorage.setItem('mesAudios', JSON.stringify(sauvegardes));
+
+                creerVisuelAudio(nom);
+                mettreAJourCompteur();
+                input.value = "";
+                alert("Publication réussie !");
+            }
+        }
+
+        // CRÉER LA CARTE
+        function creerVisuelAudio(nom) {
+            const liste = document.getElementById('listeAudios');
+            const card = document.createElement('div');
+            card.className = 'audio-card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>🎵 ${nom.substring(0, 20)}...</strong>
+                    <div>
+                        <a href="${nom}" download="${nom}" style="text-decoration:none; margin-right:10px;">📥</a>
+                        <button onclick="supprimerAudio('${nom}')" style="background:#ff4444; padding:5px 10px;">X</button>
+                    </div>
+                </div>
+                <audio controls src="${nom}"></audio>
+            `;
+            liste.prepend(card);
+        }
+
+        // SUPPRIMER
+        function supprimerAudio(nom) {
+            let sauvegardes = JSON.parse(localStorage.getItem('mesAudios')) || [];
+            sauvegardes = sauvegardes.filter(n => n !== nom);
+            localStorage.setItem('mesAudios', JSON.stringify(sauvegardes));
+            location.reload();
+        }
+
+        // RECHERCHE
+        function filtrerAudios() {
+            const s = document.getElementById('barreRecherche').value.toLowerCase();
+            document.querySelectorAll('.audio-card').forEach(c => {
+                c.style.display = c.innerText.toLowerCase().includes(s) ? "" : "none";
+            });
+        }
+
+        // FOND D'ÉCRAN
+        function changerFond() {
+            const file = document.getElementById('bgInput').files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                document.body.style.backgroundImage = `url(${reader.result})`;
+                localStorage.setItem('monFondEcran', reader.result);
+            };
+            if (file) reader.readAsDataURL(file);
+        }
+
+        function mettreAJourCompteur() {
+            let s = JSON.parse(localStorage.getItem('mesAudios')) || [];
+            document.getElementById('compteur').innerText = s.length + " morceau(x) publié(s)";
+        }
+    </script>
+</body>
+</html>
